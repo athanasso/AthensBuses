@@ -1,50 +1,147 @@
-# Welcome to your Expo app 👋
+# Athens Buses 🚌
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern React Native mobile app for tracking Athens public transportation in real-time. Built with Expo and powered by the OASA Telematics API.
 
-## Get started
+![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-blue)
+![Expo](https://img.shields.io/badge/Expo-SDK%2052-black)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-1. Install dependencies
+## Features
 
+### 🗺️ Interactive Map
+- Real-time bus stop locations on OpenStreetMap
+- Dynamic stop loading as you pan the map
+- Live bus positions with automatic updates
+- Nearby stops cards for quick access
+
+### 🚏 Stop Details
+- Complete list of bus lines at each stop
+- Real-time arrival predictions
+- Timetable schedules with departure/return times
+- Navigate to line details from any stop
+
+### 🚌 Bus Lines
+- Searchable list of all Athens bus lines
+- Route information with distance
+- Full daily schedules for each line
+- Stops list with distance from your location
+
+### ⭐ Favorites
+- Save your frequently used stops and lines
+- Quick access from the Favorites tab
+
+### ⚙️ Settings
+- **Dark/Light/System theme** - Persisted preference
+- **Language switching** - English & Greek (Ελληνικά)
+- All stop and route names display in selected language
+
+## Tech Stack
+
+- **Framework**: [Expo](https://expo.dev) (SDK 52)
+- **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/) (file-based routing)
+- **State Management**: [TanStack Query](https://tanstack.com/query) (React Query)
+- **UI Components**: Custom components with [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
+- **Maps**: OpenStreetMap via WebView
+- **Storage**: AsyncStorage for preferences
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Expo CLI
+- Android Studio (for Android) or Xcode (for iOS)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/athanasso/OasaTelematics.git
+   cd OasaTelematics
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Start the development server:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. Run on a device/emulator:
+   - Press `a` for Android
+   - Press `i` for iOS
+   - Scan QR code with Expo Go app
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### Building for Production
 
 ```bash
-npm run reset-project
+# Create development build
+npx expo run:android
+npx expo run:ios
+
+# Build APK/IPA
+eas build --platform android
+eas build --platform ios
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Project Structure
 
-## Learn more
+```
+├── app/                    # Expo Router pages
+│   ├── (tabs)/            # Tab navigation screens
+│   │   ├── index.tsx      # Stops/Map screen
+│   │   ├── lines.tsx      # Bus Lines screen
+│   │   ├── favorites.tsx  # Favorites screen
+│   │   └── _layout.tsx    # Tab layout
+│   ├── line/[lineCode].tsx    # Line details screen
+│   ├── stop/[stopCode].tsx    # Stop details screen
+│   └── _layout.tsx        # Root layout
+├── components/            # Reusable components
+│   ├── arrivals/          # Arrivals bottom sheet
+│   ├── map/               # Map components
+│   ├── schedule/          # Schedule modal
+│   ├── settings/          # Settings modal
+│   └── ui/                # UI primitives
+├── contexts/              # React Context providers
+│   ├── ThemeContext.tsx   # Dark/Light mode
+│   └── LanguageContext.tsx # i18n translations
+├── lib/                   # Utilities
+│   ├── api.ts             # API client
+│   ├── queries.ts         # TanStack Query hooks
+│   └── types.ts           # TypeScript types
+└── constants/             # Theme colors, config
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## API
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This app uses the [OASA Telematics API](https://telematics.oasa.gr/) to fetch:
+- Bus stops and routes
+- Real-time arrivals
+- Live bus locations
+- Daily schedules
 
-## Join the community
+## Screenshots
 
-Join our community of developers creating universal apps.
+| Map Screen | Lines Screen | Stop Details |
+|------------|--------------|--------------|
+| Interactive map with bus stops | Searchable lines list | Live arrivals & schedule |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License.
+
+## Author
+
+Developed by [athanasso](https://github.com/athanasso)
+
+---
+
+Made with ❤️ in Athens, Greece

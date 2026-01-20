@@ -1,29 +1,40 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * OASA Telematics App Theme
+ * Dark theme with purple accent color
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Purple accent color matching the reference design
+const accentColor = '#8B5CF6';
+const accentColorLight = '#A78BFA';
 
 export const Colors = {
   light: {
     text: '#11181C',
+    textSecondary: '#687076',
     background: '#fff',
-    tint: tintColorLight,
+    backgroundSecondary: '#f5f5f5',
+    tint: accentColor,
     icon: '#687076',
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: accentColor,
+    card: '#fff',
+    border: '#e5e5e5',
+    accent: accentColor,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
+    text: '#FFFFFF',
+    textSecondary: '#9BA1A6',
+    background: '#0a0a0a',
+    backgroundSecondary: '#1a1a1a',
+    tint: accentColorLight,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: accentColor,
+    card: '#1a1a1a',
+    border: '#2a2a2a',
+    accent: accentColor,
   },
 };
 
