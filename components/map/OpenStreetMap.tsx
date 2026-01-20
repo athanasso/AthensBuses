@@ -1,12 +1,23 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { WebView } from "react-native-webview";
+
+// MapTiler API Key from environment variable
+const MAPTILER_API_KEY = process.env.EXPO_PUBLIC_MAPTILER_API_KEY || "";
 
 export interface MapMarker {
   id: string;
   latitude: number;
   longitude: number;
-  type: 'stop' | 'bus';
+  type: "stop" | "bus";
   label?: string;
   selected?: boolean;
 }
@@ -26,125 +37,177 @@ export interface OpenStreetMapRef {
   centerOnLocation: (lat: number, lng: number) => void;
 }
 
-export const OpenStreetMap = forwardRef<OpenStreetMapRef, OpenStreetMapProps>(({
-  center,
-  zoom = 15,
-  markers = [],
-  userLocation,
-  onMarkerPress,
-  onMapReady,
-  onRegionChange,
-  darkMode = true,
-}, ref) => {
-  const webViewRef = useRef<WebView>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
+export const OpenStreetMap = forwardRef<OpenStreetMapRef, OpenStreetMapProps>(
+  (
+    {
+      center,
+      zoom = 15,
+      markers = [],
+      userLocation,
+      onMarkerPress,
+      onMapReady,
+      onRegionChange,
+      darkMode = true,
+    },
+    ref
+  ) => {
+    const webViewRef = useRef<WebView>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [mapReady, setMapReady] = useState(false);
 
-  // Expose centerOnLocation method to parent
-  useImperativeHandle(ref, () => ({
-    centerOnLocation: (lat: number, lng: number) => {
-      if (mapReady && webViewRef.current) {
-        webViewRef.current.injectJavaScript(`
-          map.setView([${lat}, ${lng}], 15);
+    // Expose centerOnLocation method to parent
+    useImperativeHandle(
+      ref,
+      () => ({
+        centerOnLocation: (lat: number, lng: number) => {
+          if (mapReady && webViewRef.current) {
+            webViewRef.current.injectJavaScript(`
+          map.flyTo({ center: [${lng}, ${lat}], zoom: 15 });
           true;
         `);
-      }
-    }
-  }), [mapReady]);
+          }
+        },
+      }),
+      [mapReady]
+    );
 
-  // Dark tile layer from CartoDB
-  const tileLayer = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    // MapTiler style - streets for light mode, streets-dark for dark mode (Google Maps-like appearance)
+    const mapStyle = darkMode
+      ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_API_KEY}`
+      : `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_API_KEY}`;
 
-  // Memoize the initial HTML - only recreate when center/zoom/darkMode changes
-  const mapHtml = useMemo(() => {
-    return `<!DOCTYPE html>
+    // Memoize the initial HTML - only recreate when center/zoom/darkMode changes
+    const mapHtml = useMemo(() => {
+      return `<!DOCTYPE html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
   <style>
     body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; background: ${darkMode ? '#1a1a2e' : '#f0f0f0'}; }
-    .leaflet-control-attribution { display: none; }
+    #map { width: 100%; height: 100vh; background: ${
+      darkMode ? "#1a1a2e" : "#f0f0f0"
+    }; }
+    .maplibregl-ctrl-attrib { display: none !important; }
+    .maplibregl-ctrl-logo { display: none !important; }
+    
+    /* Custom marker styles */
+    .marker-stop {
+      cursor: pointer;
+    }
+    .marker-bus {
+      cursor: pointer;
+    }
+    .marker-user {
+      width: 20px;
+      height: 20px;
+      background: #3b82f6;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <script>
-    var map = L.map('map', {
-      zoomControl: false,
-      attributionControl: false
-    }).setView([${center.latitude}, ${center.longitude}], ${zoom});
+    var map = new maplibregl.Map({
+      container: 'map',
+      style: '${mapStyle}',
+      center: [${center.longitude}, ${center.latitude}],
+      zoom: ${zoom},
+      attributionControl: false,
+      logoPosition: 'bottom-left'
+    });
     
-    L.tileLayer('${tileLayer}', {
-      maxZoom: 19
-    }).addTo(map);
+    var currentMarkers = [];
     
-    var markersLayer = L.layerGroup().addTo(map);
-    
-    // Create custom pin icon for stops
-    function createPinIcon(color, selected) {
+    // Create SVG for stop pin marker
+    function createStopPinSVG(color, selected) {
       var size = selected ? 36 : 28;
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24">' +
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24">' +
         '<path fill="' + color + '" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>' +
         '<circle cx="12" cy="9" r="3" fill="#fff"/>' +
         '</svg>';
-      return L.divIcon({
-        html: svg,
-        className: '',
-        iconSize: [size, size],
-        iconAnchor: [size/2, size]
+    }
+    
+    // Create SVG for bus marker
+    function createBusMarkerSVG() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+        '<circle cx="12" cy="12" r="10" fill="#22c55e" stroke="#fff" stroke-width="2"/>' +
+        '<text x="12" y="16" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">🚌</text>' +
+        '</svg>';
+    }
+    
+    function clearMarkers() {
+      currentMarkers.forEach(function(marker) {
+        marker.remove();
       });
+      currentMarkers = [];
     }
     
     function updateMarkers(markersData, userLoc) {
-      markersLayer.clearLayers();
+      clearMarkers();
       
       if (markersData && markersData.length > 0) {
         markersData.forEach(function(m) {
-          var color = m.type === 'stop' ? '#8B5CF6' : '#22c55e';
+          var el = document.createElement('div');
           
           if (m.type === 'stop') {
-            // Use pin icon for stops
-            var icon = createPinIcon(color, m.selected);
-            L.marker([m.latitude, m.longitude], { icon: icon })
-              .addTo(markersLayer)
-              .on('click', function() {
-                window.ReactNativeWebView.postMessage(JSON.stringify({type: 'markerPress', id: m.id}));
-              });
+            var color = '#8B5CF6';
+            el.className = 'marker-stop';
+            el.innerHTML = createStopPinSVG(color, m.selected);
+            var offset = m.selected ? [0, -18] : [0, -14];
+            
+            var marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([m.longitude, m.latitude])
+              .addTo(map);
           } else {
-            // Use circle for buses
-            L.circleMarker([m.latitude, m.longitude], {
-              radius: 10,
-              fillColor: color,
-              color: '#fff',
-              weight: 2,
-              fillOpacity: 0.9
-            }).addTo(markersLayer).on('click', function() {
-              window.ReactNativeWebView.postMessage(JSON.stringify({type: 'markerPress', id: m.id}));
-            });
+            // Bus marker - circle style
+            el.className = 'marker-bus';
+            el.style.width = '24px';
+            el.style.height = '24px';
+            el.style.background = '#22c55e';
+            el.style.border = '2px solid #fff';
+            el.style.borderRadius = '50%';
+            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+            
+            var marker = new maplibregl.Marker({ element: el })
+              .setLngLat([m.longitude, m.latitude])
+              .addTo(map);
           }
+          
+          el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            window.ReactNativeWebView.postMessage(JSON.stringify({type: 'markerPress', id: m.id}));
+          });
+          
+          currentMarkers.push(marker);
         });
       }
       
+      // Add user location marker
       if (userLoc) {
-        L.circleMarker([userLoc.latitude, userLoc.longitude], {
-          radius: 8,
-          fillColor: '#3b82f6',
-          color: '#fff',
-          weight: 3,
-          fillOpacity: 1
-        }).addTo(markersLayer);
+        var userEl = document.createElement('div');
+        userEl.className = 'marker-user';
+        
+        var userMarker = new maplibregl.Marker({ element: userEl })
+          .setLngLat([userLoc.longitude, userLoc.latitude])
+          .addTo(map);
+        
+        currentMarkers.push(userMarker);
       }
     }
     
-    window.ReactNativeWebView.postMessage(JSON.stringify({type: 'mapReady'}));
+    map.on('load', function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({type: 'mapReady'}));
+    });
     
     // Track last reported center to avoid unnecessary updates
-    var lastReportedCenter = { lat: ${center.latitude}, lng: ${center.longitude} };
+    var lastReportedCenter = { lat: ${center.latitude}, lng: ${
+        center.longitude
+      } };
     
     // Calculate distance between two points in meters (Haversine formula)
     function getDistance(lat1, lng1, lat2, lng2) {
@@ -176,77 +239,88 @@ export const OpenStreetMap = forwardRef<OpenStreetMapRef, OpenStreetMapProps>(({
   </script>
 </body>
 </html>`;
-  }, [center.latitude, center.longitude, zoom, darkMode, tileLayer]);
+    }, [center.latitude, center.longitude, zoom, darkMode, mapStyle]);
 
-  // Update markers when they change
-  useEffect(() => {
-    if (mapReady && webViewRef.current) {
-      const markersJson = JSON.stringify(markers);
-      const userLocJson = userLocation ? JSON.stringify(userLocation) : 'null';
-      
-      webViewRef.current.injectJavaScript(`
+    // Update markers when they change
+    useEffect(() => {
+      if (mapReady && webViewRef.current) {
+        const markersJson = JSON.stringify(markers);
+        const userLocJson = userLocation
+          ? JSON.stringify(userLocation)
+          : "null";
+
+        webViewRef.current.injectJavaScript(`
         updateMarkers(${markersJson}, ${userLocJson});
         true;
       `);
-    }
-  }, [markers, userLocation, mapReady]);
+      }
+    }, [markers, userLocation, mapReady]);
 
-  // Center map on user location when it first becomes available
-  const hasInitialCentered = useRef(false);
-  useEffect(() => {
-    if (mapReady && userLocation && webViewRef.current && !hasInitialCentered.current) {
-      hasInitialCentered.current = true;
-      webViewRef.current.injectJavaScript(`
-        map.setView([${userLocation.latitude}, ${userLocation.longitude}], 15);
+    // Center map on user location when it first becomes available
+    const hasInitialCentered = useRef(false);
+    useEffect(() => {
+      if (
+        mapReady &&
+        userLocation &&
+        webViewRef.current &&
+        !hasInitialCentered.current
+      ) {
+        hasInitialCentered.current = true;
+        webViewRef.current.injectJavaScript(`
+        map.flyTo({ center: [${userLocation.longitude}, ${userLocation.latitude}], zoom: 15 });
         true;
       `);
-    }
-  }, [mapReady, userLocation]);
-
-  const handleMessage = useCallback(
-    (event: any) => {
-      try {
-        const data = JSON.parse(event.nativeEvent.data);
-        if (data.type === 'markerPress' && onMarkerPress) {
-          onMarkerPress(data.id);
-        } else if (data.type === 'mapReady') {
-          setIsLoading(false);
-          setMapReady(true);
-          onMapReady?.();
-        } else if (data.type === 'regionChange' && onRegionChange) {
-          onRegionChange({ latitude: data.latitude, longitude: data.longitude });
-        }
-      } catch (e) {
-        // Silently ignore parse errors
       }
-    },
-    [onMarkerPress, onMapReady, onRegionChange]
-  );
+    }, [mapReady, userLocation]);
 
-  return (
-    <View style={styles.container}>
-      <WebView
-        ref={webViewRef}
-        source={{ html: mapHtml }}
-        style={styles.webview}
-        onMessage={handleMessage}
-        javaScriptEnabled
-        domStorageEnabled
-        startInLoadingState
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
-      />
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-        </View>
-      )}
-    </View>
-  );
-});
+    const handleMessage = useCallback(
+      (event: any) => {
+        try {
+          const data = JSON.parse(event.nativeEvent.data);
+          if (data.type === "markerPress" && onMarkerPress) {
+            onMarkerPress(data.id);
+          } else if (data.type === "mapReady") {
+            setIsLoading(false);
+            setMapReady(true);
+            onMapReady?.();
+          } else if (data.type === "regionChange" && onRegionChange) {
+            onRegionChange({
+              latitude: data.latitude,
+              longitude: data.longitude,
+            });
+          }
+        } catch (e) {
+          // Silently ignore parse errors
+        }
+      },
+      [onMarkerPress, onMapReady, onRegionChange]
+    );
+
+    return (
+      <View style={styles.container}>
+        <WebView
+          ref={webViewRef}
+          source={{ html: mapHtml }}
+          style={styles.webview}
+          onMessage={handleMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={false}
+          bounces={false}
+          overScrollMode="never"
+        />
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#8B5CF6" />
+          </View>
+        )}
+      </View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -254,12 +328,12 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1a1a2e',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#1a1a2e",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

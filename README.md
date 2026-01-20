@@ -9,28 +9,34 @@ A modern React Native mobile app for tracking Athens public transportation in re
 ## Features
 
 ### 🗺️ Interactive Map
-- Real-time bus stop locations on OpenStreetMap
+
+- Real-time bus stop locations powered by MapLibre GL JS + MapTiler
+- Google Maps-like styling with smooth vector tiles
 - Dynamic stop loading as you pan the map
 - Live bus positions with automatic updates
 - Nearby stops cards for quick access
 
 ### 🚏 Stop Details
+
 - Complete list of bus lines at each stop
 - Real-time arrival predictions
 - Timetable schedules with departure/return times
 - Navigate to line details from any stop
 
 ### 🚌 Bus Lines
+
 - Searchable list of all Athens bus lines
 - Route information with distance
 - Full daily schedules for each line
 - Stops list with distance from your location
 
 ### ⭐ Favorites
+
 - Save your frequently used stops and lines
 - Quick access from the Favorites tab
 
 ### ⚙️ Settings
+
 - **Dark/Light/System theme** - Persisted preference
 - **Language switching** - English & Greek (Ελληνικά)
 - All stop and route names display in selected language
@@ -41,7 +47,7 @@ A modern React Native mobile app for tracking Athens public transportation in re
 - **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/) (file-based routing)
 - **State Management**: [TanStack Query](https://tanstack.com/query) (React Query)
 - **UI Components**: Custom components with [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
-- **Maps**: OpenStreetMap via WebView
+- **Maps**: [MapLibre GL JS](https://maplibre.org/) + [MapTiler](https://www.maptiler.com/) (Google Maps-like styling)
 - **Storage**: AsyncStorage for preferences
 
 ## Getting Started
@@ -56,22 +62,39 @@ A modern React Native mobile app for tracking Athens public transportation in re
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/athanasso/OasaTelematics.git
    cd OasaTelematics
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
-3. Start the development server:
+3. Set up environment variables:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then edit `.env` and add your MapTiler API key:
+
+   ```
+   EXPO_PUBLIC_MAPTILER_API_KEY=your_maptiler_api_key
+   ```
+
+   Get a free API key at [maptiler.com](https://www.maptiler.com/cloud/)
+
+4. Start the development server:
+
    ```bash
    npx expo start
    ```
 
-4. Run on a device/emulator:
+5. Run on a device/emulator:
    - Press `a` for Android
    - Press `i` for iOS
    - Scan QR code with Expo Go app
@@ -119,6 +142,7 @@ eas build --platform ios
 ## API
 
 This app uses the [OASA Telematics API](https://telematics.oasa.gr/) to fetch:
+
 - Bus stops and routes
 - Real-time arrivals
 - Live bus locations
