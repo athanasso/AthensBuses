@@ -37,6 +37,14 @@ A modern React Native mobile app for tracking Athens public transportation in re
 - Save your frequently used stops and lines
 - Quick access from the Favorites tab
 
+### 🎫 NFC Ticket Scanner
+
+- Scan ATH.ENA transit cards using NFC
+- View remaining trips on your card
+- See user category (Student, Regular, etc.)
+- Check active and expired products
+- Works with MIFARE DESFire EV1 cards
+
 ### ⚙️ Settings
 
 - **Dark/Light/System theme** - Persisted preference
@@ -51,6 +59,7 @@ A modern React Native mobile app for tracking Athens public transportation in re
 - **UI Components**: Custom components with [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
 - **Maps**: [MapLibre GL JS](https://maplibre.org/) + [MapTiler](https://www.maptiler.com/) (Google Maps-like styling)
 - **Storage**: AsyncStorage for preferences
+- **NFC**: [react-native-nfc-manager](https://github.com/revtel/react-native-nfc-manager) for ATH.ENA card reading
 
 ## Getting Started
 
@@ -121,6 +130,7 @@ eas build --platform ios
 │   │   ├── index.tsx      # Stops/Map screen
 │   │   ├── lines.tsx      # Bus Lines screen
 │   │   ├── favorites.tsx  # Favorites screen
+│   │   ├── ticket.tsx     # NFC Ticket Scanner
 │   │   └── _layout.tsx    # Tab layout
 │   ├── line/[lineCode].tsx    # Line details screen
 │   ├── stop/[stopCode].tsx    # Stop details screen
@@ -153,7 +163,7 @@ This app uses the [OASA Telematics API](https://telematics.oasa.gr/) to fetch:
 ## Screenshots
 
 | Map Screen                     | Lines Screen          | Stop Details             |
-|--------------------------------|-----------------------|--------------------------|
+| ------------------------------ | --------------------- | ------------------------ |
 | Interactive map with bus stops | Searchable lines list | Live arrivals & schedule |
 
 ## Contributing

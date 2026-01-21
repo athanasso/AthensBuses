@@ -13,12 +13,7 @@ import {
 import { Colors } from "@/constants/theme";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import {
-  useBusLocations,
-  useClosestStops,
-  useRouteDetails,
-  useStops,
-} from "@/lib/queries";
+import { useBusLocations, useClosestStops, useStops } from "@/lib/queries";
 import type { Stop } from "@/lib/types";
 
 import { ArrivalsSheet } from "@/components/arrivals/ArrivalsSheet";
@@ -55,19 +50,16 @@ export default function StopsScreen() {
     longitude: number;
   }>(ATHENS_CENTER);
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
-  const [selectedRouteCode, setSelectedRouteCode] = useState<string | null>(
-    null
-  );
+  const [selectedRouteCode] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   // Queries - use mapCenter for fetching stops (updates when map moves)
   const { data: nearbyStops } = useClosestStops(
     mapCenter.latitude,
-    mapCenter.longitude
+    mapCenter.longitude,
   );
 
-  const { data: routeDetails } = useRouteDetails(selectedRouteCode);
   const { data: busLocations } = useBusLocations(selectedRouteCode, {
     enabled: isMapReady,
   });
@@ -131,6 +123,7 @@ export default function StopsScreen() {
       isMounted = false;
       clearTimeout(timeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle stop press from nearby cards
@@ -149,7 +142,7 @@ export default function StopsScreen() {
         bottomSheetRef.current?.snapToIndex(0);
       }
     },
-    [routeStops, nearbyStops]
+    [routeStops, nearbyStops],
   );
 
   // Handle sheet close
@@ -162,7 +155,7 @@ export default function StopsScreen() {
     (center: { latitude: number; longitude: number }) => {
       setMapCenter(center);
     },
-    []
+    [],
   );
 
   // Get stops to display (nearby or route stops)
@@ -232,7 +225,7 @@ export default function StopsScreen() {
               // Already have location, just center
               mapRef.current?.centerOnLocation(
                 userLocation.latitude,
-                userLocation.longitude
+                userLocation.longitude,
               );
               setMapCenter(userLocation);
             } else {
@@ -246,7 +239,7 @@ export default function StopsScreen() {
                 setUserLocation(newLoc);
                 mapRef.current?.centerOnLocation(
                   newLoc.latitude,
-                  newLoc.longitude
+                  newLoc.longitude,
                 );
                 setMapCenter(newLoc);
               }
@@ -261,7 +254,7 @@ export default function StopsScreen() {
               setUserLocation(newLoc);
               mapRef.current?.centerOnLocation(
                 newLoc.latitude,
-                newLoc.longitude
+                newLoc.longitude,
               );
               setMapCenter(newLoc);
             }

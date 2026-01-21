@@ -1,12 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Platform } from "react-native";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { HapticTab } from "@/components/haptic-tab";
+import { Colors } from "@/constants/theme";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function TabLayout() {
   const { theme: colorScheme } = useTheme();
@@ -22,12 +22,13 @@ export default function TabLayout() {
           borderTopColor: Colors[colorScheme].border,
           borderTopWidth: 1,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingBottom: Platform.OS === "ios" ? 24 : 8,
+          height: Platform.OS === "ios" ? 84 : 64,
         },
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -52,6 +53,15 @@ export default function TabLayout() {
           title: t.favorites,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ticket"
+        options={{
+          title: t.ticket,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="card-outline" size={size} color={color} />
           ),
         }}
       />
