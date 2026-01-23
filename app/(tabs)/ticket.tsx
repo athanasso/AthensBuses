@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,6 +18,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 // NFC imports - conditionally loaded for native platforms
 let NfcManager: any = null;
 let NfcTech: any = null;
+let NfcEvents: any = null;
 
 if (Platform.OS !== "web") {
   try {
@@ -23,6 +26,7 @@ if (Platform.OS !== "web") {
     const nfcModule = require("react-native-nfc-manager");
     NfcManager = nfcModule.default;
     NfcTech = nfcModule.NfcTech;
+    NfcEvents = nfcModule.NfcEvents;
   } catch {
     console.log("NFC module not available");
   }
@@ -680,8 +684,7 @@ export default function TicketScreen() {
   const [error, setError] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
 
-  // Check NFC support on mount
-  useEffect(() => {
+  const checkNfcStatus = React.useCallback(async () => {
     if (Platform.OS === "web") {
       setNfcSupported(false);
       return;
@@ -692,30 +695,56 @@ export default function TicketScreen() {
       return;
     }
 
-    const checkNfc = async () => {
-      try {
-        const supported = await NfcManager.isSupported();
-        setNfcSupported(supported);
+    try {
+      const supported = await NfcManager.isSupported();
+      setNfcSupported(supported);
 
-        if (supported) {
-          await NfcManager.start();
-          const enabled = await NfcManager.isEnabled();
-          setNfcEnabled(enabled);
-        }
-      } catch (e) {
-        console.error("NFC check error:", e);
-        setNfcSupported(false);
+      if (supported) {
+        await NfcManager.start();
+        const enabled = await NfcManager.isEnabled();
+        setNfcEnabled(enabled);
       }
-    };
+    } catch (e) {
+      console.error("NFC check error:", e);
+      setNfcSupported(false);
+    }
+  }, []);
 
-    checkNfc();
+  // Check NFC support on mount and whenever app state changes
+  useEffect(() => {
+    checkNfcStatus();
 
+    // Listener for NFC State changes (on/off)
+    if (NfcManager && NfcEvents) {
+      NfcManager.setEventListener(NfcEvents.StateChanged, () => {
+        checkNfcStatus();
+      });
+    }
+
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        checkNfcStatus();
+      }
+    });
+
+    // Cleanup subscription
     return () => {
+      subscription.remove();
       if (NfcManager) {
+        if (NfcEvents) {
+          NfcManager.setEventListener(NfcEvents.StateChanged, null);
+        }
         NfcManager.cancelTechnologyRequest().catch(() => {});
       }
     };
-  }, []);
+  }, [checkNfcStatus]);
+
+  // Also check when the screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkNfcStatus();
+    }, [checkNfcStatus])
+  );
 
   // Countdown timer for active tickets
   useEffect(() => {
