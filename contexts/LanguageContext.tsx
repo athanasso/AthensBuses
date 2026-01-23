@@ -95,6 +95,8 @@ interface Translations {
   ticketReadError: string;
   cardDetails: string;
   ticketData: string;
+  readingCard: string;
+  keepCardClose: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -194,6 +196,8 @@ const translations: Record<Language, Translations> = {
     ticketReadError: "Could not read ticket. Please try again.",
     cardDetails: "Card Details",
     ticketData: "Ticket Data",
+    readingCard: "Reading card...",
+    keepCardClose: "Keep card close to the device",
   },
   el: {
     // Navigation
@@ -292,6 +296,8 @@ const translations: Record<Language, Translations> = {
       "Δεν ήταν δυνατή η ανάγνωση του εισιτηρίου. Δοκιμάστε ξανά.",
     cardDetails: "Στοιχεία Κάρτας",
     ticketData: "Δεδομένα Εισιτηρίου",
+    readingCard: "Ανάγνωση κάρτας...",
+    keepCardClose: "Κρατήστε την κάρτα κοντά στη συσκευή",
   },
 };
 

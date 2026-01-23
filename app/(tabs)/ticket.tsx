@@ -684,6 +684,7 @@ export default function TicketScreen() {
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [nfcEnabled, setNfcEnabled] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isReading, setIsReading] = useState(false); // True when actively reading card data
   const [ticketInfo, setTicketInfo] = useState<TicketInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
@@ -1321,6 +1322,9 @@ export default function TicketScreen() {
         console.log("Tag detected:", JSON.stringify(tag, null, 2));
 
         if (tag && isMounted) {
+          // Card detected - start reading data
+          setIsReading(true);
+          
           const pages: number[] = [];
 
           // First, use the tag's UID/ID if available - convert hex string to bytes
@@ -1450,6 +1454,7 @@ export default function TicketScreen() {
 
         if (isMounted) {
           setIsScanning(false);
+          setIsReading(false); // Hide reading overlay
 
           // Restart scanning after a short delay
           scanTimeout = setTimeout(() => {
@@ -1533,10 +1538,11 @@ export default function TicketScreen() {
     const statusBgColor = ticketInfo.isActive ? "#22C55E20" : "#EF444420";
 
     return (
-      <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView
+          style={[styles.container]}
+          contentContainerStyle={styles.scrollContent}
+        >
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t.ticketInfo}
@@ -1910,6 +1916,22 @@ export default function TicketScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Reading Overlay - shows while card data is being read */}
+      {isReading && (
+        <View style={styles.readingOverlay}>
+          <View style={[styles.readingModal, { backgroundColor: colors.card }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.readingTitle, { color: colors.text }]}>
+              {t.readingCard}
+            </Text>
+            <Text style={[styles.readingSubtitle, { color: colors.textSecondary }]}>
+              {t.keepCardClose}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
     );
   }
 
@@ -1940,6 +1962,21 @@ export default function TicketScreen() {
           </View>
         )}
       </View>
+
+      {/* Reading Overlay - shows while card data is being read */}
+      {isReading && (
+        <View style={styles.readingOverlay}>
+          <View style={[styles.readingModal, { backgroundColor: colors.card }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.readingTitle, { color: colors.text }]}>
+              {t.readingCard || "Reading card..."}
+            </Text>
+            <Text style={[styles.readingSubtitle, { color: colors.textSecondary }]}>
+              {t.keepCardClose || "Keep card close to the device"}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -2133,5 +2170,36 @@ const styles = StyleSheet.create({
   },
   scanHintText: {
     fontSize: 14,
+  },
+  // Reading overlay styles
+  readingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  readingModal: {
+    width: "80%",
+    maxWidth: 300,
+    padding: 32,
+    borderRadius: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  readingTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginTop: 20,
+    textAlign: "center",
+  },
+  readingSubtitle: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
   },
 });
