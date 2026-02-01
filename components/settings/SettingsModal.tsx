@@ -232,7 +232,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   {t.developedBy} athanasso
                 </Text>
                 <Text style={[styles.version, { color: colors.textSecondary }]}>
-                  {t.version} 1.1.0
+                  {t.version} 1.2.1
                 </Text>
 
                 <TouchableOpacity
