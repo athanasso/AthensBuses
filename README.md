@@ -125,6 +125,15 @@ eas build --platform android
 eas build --platform ios
 ```
 
+### Android HTTP Traffic
+
+The Athens API (OASA) uses HTTP instead of HTTPS. Android 9+ blocks cleartext HTTP traffic by default. This app enables it via:
+
+- **app.json**: `expo-build-properties` plugin with `usesCleartextTraffic: true`
+- **AndroidManifest.xml**: `android:usesCleartextTraffic="true"` in the `<application>` tag
+
+If you run `npx expo prebuild`, ensure the manifest is regenerated with this setting.
+
 ## Project Structure
 
 ```text

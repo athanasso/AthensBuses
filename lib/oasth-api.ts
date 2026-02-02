@@ -274,49 +274,16 @@ export async function getClosestStops(lat: number, lng: number): Promise<Stop[]>
   return stopsWithDistance.slice(0, 30);
 }
 
-// Cache for stop-to-routes mapping
-let stopRoutesCache: Map<string, StopRoute[]> | null = null;
-let routesCachePromise: Promise<void> | null = null;
-let allRoutesCache: Route[] | null = null;
-let allLinesCache: Line[] | null = null;
-
 /**
- * Fetch and cache all lines
+ * Get routes for a stop
+ * OASTH doesn't have a direct endpoint, so we use getRealTimeArrivals which returns route info
  */
-async function getCachedLines(): Promise<Line[]> {
-  if (allLinesCache) return allLinesCache;
-  allLinesCache = await getLines();
-  return allLinesCache;
-}
-
-/**
- * Fetch all routes (used for caching)
- */
-async function getAllRoutes(): Promise<Route[]> {
-  if (allRoutesCache) return allRoutesCache;
+export async function getRoutesForStop(stopCode: string): Promise<StopRoute[]> {
+  // Fetch real-time arrivals which contains route information
+  const arrivalsUrl = buildUrl('getStopArrivals', stopCode);
   
-  const rows = await fetchAPI<string[][]>('getRoutes');
-  if (!Array.isArray(rows)) return [];
-  
-  allRoutesCache = rows.map(row => ({
-    RouteCode: row[1]?.toString() || '',
-    LineCode: row[0]?.toString() || '',
-    RouteDescr: row[2] || '',
-    RouteDescrEng: row[3] || row[2] || '',
-    RouteType: '1',
-    RouteDistance: '',
-  }));
-  
-  return allRoutesCache;
-}
-
-/**
- * Get stops for a specific route (to build the reverse mapping)
- */
-async function getStopsForRoute(routeCode: string): Promise<string[]> {
   try {
-    const url = buildUrl('getStopsForRoute', routeCode);
-    const response = await fetch(url, { headers: { 'Accept': '*/*' } });
+    const response = await fetch(arrivalsUrl, { headers: { 'Accept': '*/*' } });
     if (!response.ok) return [];
     
     const buffer = await response.arrayBuffer();
@@ -325,129 +292,50 @@ async function getStopsForRoute(routeCode: string): Promise<string[]> {
     
     if (!text || text.trim() === '') return [];
     
-    // Parse the response
+    // Parse arrivals - format can be JSON or tuples
+    let arrivals: any[] = [];
     const trimmed = text.trim();
-    let stops: any[] = [];
     
     if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
       try {
-        stops = JSON.parse(text);
+        arrivals = JSON.parse(text);
       } catch {
-        stops = parseTupleFormat(text);
+        arrivals = parseTupleFormat(text);
       }
     } else {
-      stops = parseTupleFormat(text);
+      arrivals = parseTupleFormat(text);
     }
     
-    if (!Array.isArray(stops)) return [];
+    if (!Array.isArray(arrivals)) return [];
     
-    // Extract stop codes
-    return stops.map((stop: any) => {
-      if (stop && typeof stop === 'object' && !Array.isArray(stop)) {
-        return stop.stopCode?.toString() || stop.stopId?.toString() || '';
-      }
-      // Tuple format: assume stopCode is at index 1
-      return stop[1]?.toString() || stop[0]?.toString() || '';
-    }).filter(Boolean);
-  } catch {
+    // Get unique route codes from arrivals
+    const routeCodes = new Set<string>();
+    arrivals.forEach((arr: any) => {
+      if (arr.route_code) routeCodes.add(arr.route_code);
+      else if (arr[1]) routeCodes.add(arr[1]); // tuple format
+    });
+    
+    // Build minimal StopRoute objects
+    const routes: StopRoute[] = [];
+    for (const routeCode of routeCodes) {
+      routes.push({
+        RouteCode: routeCode,
+        RouteDescr: `Route ${routeCode}`,
+        RouteDescrEng: `Route ${routeCode}`,
+        RouteType: '1',
+        LineCode: routeCode,
+        LineID: routeCode.slice(-2) || routeCode, // Use last 2 digits as display ID
+        LineDescr: `Line ${routeCode}`,
+        LineDescrEng: `Line ${routeCode}`,
+        MasterLineCode: routeCode,
+      });
+    }
+    
+    return routes;
+  } catch (error) {
+    console.error('Error fetching routes for stop:', error);
     return [];
   }
-}
-
-/**
- * Build the stop-to-routes cache
- */
-async function buildStopRoutesCache(): Promise<void> {
-  if (stopRoutesCache) return;
-  
-  console.log('OASTH: Building stop-routes cache...');
-  
-  stopRoutesCache = new Map();
-  
-  const [routes, lines] = await Promise.all([
-    getAllRoutes(),
-    getCachedLines()
-  ]);
-  
-  // Create a map of lineCode to line info
-  const lineMap = new Map<string, Line>();
-  lines.forEach(line => lineMap.set(line.LineCode, line));
-  
-  // For each route, get its stops and build the reverse mapping
-  // Process in batches to avoid overwhelming the API
-  const batchSize = 10;
-  for (let i = 0; i < routes.length; i += batchSize) {
-    const batch = routes.slice(i, i + batchSize);
-    
-    await Promise.all(batch.map(async (route) => {
-      const stopCodes = await getStopsForRoute(route.RouteCode);
-      const line = lineMap.get(route.LineCode);
-      
-      for (const stopCode of stopCodes) {
-        const existing = stopRoutesCache!.get(stopCode) || [];
-        
-        // Check if this route is already added
-        if (!existing.some(r => r.RouteCode === route.RouteCode)) {
-          existing.push({
-            RouteCode: route.RouteCode,
-            RouteDescr: route.RouteDescr,
-            RouteDescrEng: route.RouteDescrEng,
-            RouteType: route.RouteType || '1',
-            LineCode: route.LineCode,
-            LineID: line?.LineID || route.LineCode,
-            LineDescr: line?.LineDescr || route.RouteDescr,
-            LineDescrEng: line?.LineDescrEng || route.RouteDescrEng,
-            MasterLineCode: route.LineCode,
-          });
-          stopRoutesCache!.set(stopCode, existing);
-        }
-      }
-    }));
-  }
-  
-  console.log(`OASTH: Cache built with ${stopRoutesCache.size} stops mapped`);
-}
-
-/**
- * Get routes for a stop
- * Uses a cached mapping of stops to routes
- */
-export async function getRoutesForStop(stopCode: string): Promise<StopRoute[]> {
-  // Start building cache if not already started
-  if (!routesCachePromise) {
-    routesCachePromise = buildStopRoutesCache();
-  }
-  
-  // Wait for cache to be ready
-  await routesCachePromise;
-  
-  // Return routes for this stop
-  const routes = stopRoutesCache?.get(stopCode) || [];
-  
-  // If no cached routes, try getting from live arrivals as fallback
-  if (routes.length === 0) {
-    try {
-      const arrivals = await getStopArrivals(stopCode);
-      if (arrivals.length > 0) {
-        const routeCodes = new Set(arrivals.map(a => a.route_code).filter(Boolean));
-        return Array.from(routeCodes).map(routeCode => ({
-          RouteCode: routeCode,
-          RouteDescr: `Route ${routeCode}`,
-          RouteDescrEng: `Route ${routeCode}`,
-          RouteType: '1',
-          LineCode: routeCode,
-          LineID: routeCode.slice(-2) || routeCode,
-          LineDescr: `Line ${routeCode}`,
-          LineDescrEng: `Line ${routeCode}`,
-          MasterLineCode: routeCode,
-        }));
-      }
-    } catch {
-      // Ignore errors
-    }
-  }
-  
-  return routes;
 }
 
 /**
